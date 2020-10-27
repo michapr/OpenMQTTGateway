@@ -48,13 +48,9 @@ ReceivedSignal receivedSignal[struct_size] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
 unsigned long timer_sys_measures = 0;
 #  define ARDUINOJSON_USE_LONG_LONG 1
 #endif
-#include "SPIFFS.h"
 #include <ArduinoJson.h>
 #include <ArduinoLog.h>
 #include <PubSubClient.h>
-#include <TFT_eSPI.h>
-
-TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 
 // Modules config inclusion
 #if defined(ZgatewayRF) || defined(ZgatewayRF2) || defined(ZgatewayPilight)
@@ -134,6 +130,9 @@ TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
 #endif
 #if defined(ZboardM5STICKC) || defined(ZboardM5STACK)
 #  include "config_M5.h"
+#endif
+#if defined(ZgatewayRS232)
+#  include "config_RS232.h"
 #endif
 /*------------------------------------------------------------------------*/
 
@@ -259,7 +258,9 @@ void pub(char* topicori, JsonObject& data) {
 #ifdef valueAsASubject
 #  ifdef ZgatewayPilight
     String value = data["value"];
+    String protocol = data["protocol"];
     if (value != 0) {
+      topic = topic + "/" + protocol + "/" + value;
     }
 #  else
     SIGNAL_SIZE_UL_ULL value = data["value"];
@@ -519,26 +520,11 @@ void setup_parameters() {
 }
 
 void setup() {
-// TFT setup
-    tft.init();
-    tft.setRotation(1);
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextSize(2);
-    tft.setTextColor(TFT_GREEN);
-    tft.setCursor(0, 0);
-    if (TFT_BL > 0) {                           // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-        pinMode(TFT_BL, OUTPUT);                // Set backlight pin to output mode
-        digitalWrite(TFT_BL, TFT_BACKLIGHT_ON); // Turn backlight on. TFT_BACKLIGHT_ON has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-    }
-    tft.fillScreen(TFT_BLACK);
-
   //Launch serial for debugging purposes
   Serial.begin(SERIAL_BAUD);
   Log.begin(LOG_LEVEL, &Serial);
   Log.notice(F(CR "************* WELCOME TO OpenMQTTGateway **************" CR));
 
-  tft.print("Here is "+String(DEVICE_HOSTNAME));
-  
 #if defined(ESP8266) || defined(ESP32)
 #  ifdef ESP8266
 #    ifndef ZgatewaySRFB // if we are not in sonoff rf bridge case we apply the ESP8266 GPIO optimization
@@ -678,6 +664,9 @@ void setup() {
 #endif
 #ifdef ZsensorDHT
   setupDHT();
+#endif
+#ifdef ZgatewayRS232
+  setupRS232();
 #endif
   Log.trace(F("mqtt_max_packet_size: %d" CR), mqtt_max_packet_size);
   Log.notice(F("Setup OpenMQTTGateway end" CR));
@@ -838,8 +827,6 @@ void setup_wifi() {
 
   // We start by connecting to a WiFi network
   Log.trace(F("Connecting to %s" CR), manual_wifi_ssid);
-  tft.println("Connecting to " + String(manual_wifi_ssid));
-
 #  ifdef ESPWifiAdvancedSetup
   IPAddress ip_adress(ip);
   IPAddress gateway_adress(gateway);
@@ -1291,6 +1278,9 @@ void loop() {
       if (RFM69toMQTT())
         Log.trace(F("RFM69toMQTT OK" CR));
 #endif
+#ifdef ZgatewayRS232
+      RS232toMQTT();
+#endif
 #ifdef ZactuatorFASTLED
       FASTLEDLoop();
 #endif
@@ -1454,6 +1444,9 @@ void stateMeasures() {
   SYSdata["m5-bat-chargecurrent"] = (float)M5.Axp.GetBatChargeCurrent();
   SYSdata["m5-aps-voltage"] = (float)M5.Axp.GetAPSVoltage();
 #  endif
+#  ifdef ZGatewayRS232
+  modules = modules + ZGatewayRS232;
+#  endif
   SYSdata["modules"] = modules;
   pub(subjectSYStoMQTT, SYSdata);
 }
@@ -1568,6 +1561,9 @@ void receivingMQTT(char* topicOri, char* datacallback) {
 #  endif
 #  ifdef ZactuatorONOFF // outside the jsonpublishing macro due to the fact that we need to use simplepublishing with HA discovery
     MQTTtoONOFF(topicOri, jsondata);
+#  endif
+#  ifdef ZgatewayRS232
+    MQTTtoRS232(topicOri, jsondata);
 #  endif
 #endif
     digitalWrite(LED_SEND, LED_SEND_ON);
