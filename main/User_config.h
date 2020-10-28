@@ -50,14 +50,19 @@
  */
 /*-------------DEFINE GATEWAY NAME BELOW IT CAN ALSO BE DEFINED IN platformio.ini----------------*/
 #ifndef Gateway_Name
-#  define Gateway_Name "OpenMQTTGateway"
+#  define Gateway_Name "O_MQTT_GW-1"
 #endif
 #ifndef Gateway_Short_Name
 #  define Gateway_Short_Name "OMG"
 #endif
 
+#define SYSLOG_SERVER "192.168.178.200"
+#define SYSLOG_PORT 514
+#define DEVICE_HOSTNAME "O_MQTT_GW-1"
+#define APP_NAME "O_MQTT_GW-1"
+
 #ifndef Base_Topic
-#  define Base_Topic "home/"
+#  define Base_Topic "OpenMQTThome/"
 #endif
 
 /*-------------DEFINE YOUR NETWORK PARAMETERS BELOW----------------*/
@@ -232,7 +237,6 @@ uint8_t wifiProtocol = 0; // default mode, automatic selection
 //#define ZboardM5STACK  "ZboardM5STACK"
 //#define ZradioCC1101   "CC1101"   //ESP8266, ESP32
 //#define ZactuatorPWM   "PWM"      //ESP8266, ESP32
-//#define ZgatewayRS232   "RS232"  //ESP8266, Arduino, ESP32
 
 /*-------------DEFINE YOUR MQTT ADVANCED PARAMETERS BELOW----------------*/
 #ifndef version_Topic
@@ -379,6 +383,7 @@ uint8_t wifiProtocol = 0; // default mode, automatic selection
 #define subjectMQTTtoSYSset          "/commands/MQTTtoSYS/config"
 
 /*-------------------DEFINE LOG LEVEL----------------------*/
-#define LOG_LEVEL LOG_LEVEL_NOTICE
+//#define LOG_LEVEL LOG_LEVEL_NOTICE
+#define LOG_LEVEL LOG_LEVEL_TRACE
 
 #endif
