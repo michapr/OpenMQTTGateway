@@ -51,6 +51,11 @@ unsigned long timer_sys_measures = 0;
 #include <ArduinoJson.h>
 #include <ArduinoLog.h>
 #include <PubSubClient.h>
+#include <WiFiUdp.h>
+#include <Syslog.h>
+
+WiFiUDP udpClient;
+Syslog syslog(udpClient, SYSLOG_SERVER, SYSLOG_PORT, DEVICE_HOSTNAME, APP_NAME, LOG_KERN);
 
 // Modules config inclusion
 #if defined(ZgatewayRF) || defined(ZgatewayRF2) || defined(ZgatewayPilight)
@@ -130,9 +135,6 @@ unsigned long timer_sys_measures = 0;
 #endif
 #if defined(ZboardM5STICKC) || defined(ZboardM5STACK)
 #  include "config_M5.h"
-#endif
-#if defined(ZgatewayRS232)
-#  include "config_RS232.h"
 #endif
 /*------------------------------------------------------------------------*/
 
@@ -258,9 +260,8 @@ void pub(char* topicori, JsonObject& data) {
 #ifdef valueAsASubject
 #  ifdef ZgatewayPilight
     String value = data["value"];
-    String protocol = data["protocol"];
     if (value != 0) {
-      topic = topic + "/" + protocol + "/" + value;
+      topic = topic + "/" + value;
     }
 #  else
     SIGNAL_SIZE_UL_ULL value = data["value"];
@@ -428,6 +429,7 @@ void logJson(JsonObject& jsondata) {
 #endif
   jsondata.printTo(JSONmessageBuffer, sizeof(JSONmessageBuffer));
   Log.notice(F("Received json : %s" CR), JSONmessageBuffer);
+  syslog.logf(LOG_INFO,("Received json : %s" CR), JSONmessageBuffer);
 }
 
 bool cmpToMainTopic(char* topicOri, char* toAdd) {
@@ -524,7 +526,8 @@ void setup() {
   Serial.begin(SERIAL_BAUD);
   Log.begin(LOG_LEVEL, &Serial);
   Log.notice(F(CR "************* WELCOME TO OpenMQTTGateway **************" CR));
-
+  tft.print("Here is "+String(DEVICE_HOSTNAME));
+  
 #if defined(ESP8266) || defined(ESP32)
 #  ifdef ESP8266
 #    ifndef ZgatewaySRFB // if we are not in sonoff rf bridge case we apply the ESP8266 GPIO optimization
@@ -551,6 +554,7 @@ void setup() {
   Log.trace(F("OpenMQTTGateway Wifi protocol used: %d" CR), wifiProtocol);
   Log.trace(F("OpenMQTTGateway mac: %s" CR), WiFi.macAddress().c_str());
   Log.trace(F("OpenMQTTGateway ip: %s" CR), WiFi.localIP().toString().c_str());
+  syslog.log(LOG_INFO,"Reboot");
 #  endif
 
   setOTA();
@@ -664,9 +668,6 @@ void setup() {
 #endif
 #ifdef ZsensorDHT
   setupDHT();
-#endif
-#ifdef ZgatewayRS232
-  setupRS232();
 #endif
   Log.trace(F("mqtt_max_packet_size: %d" CR), mqtt_max_packet_size);
   Log.notice(F("Setup OpenMQTTGateway end" CR));
@@ -1278,9 +1279,6 @@ void loop() {
       if (RFM69toMQTT())
         Log.trace(F("RFM69toMQTT OK" CR));
 #endif
-#ifdef ZgatewayRS232
-      RS232toMQTT();
-#endif
 #ifdef ZactuatorFASTLED
       FASTLEDLoop();
 #endif
@@ -1444,9 +1442,6 @@ void stateMeasures() {
   SYSdata["m5-bat-chargecurrent"] = (float)M5.Axp.GetBatChargeCurrent();
   SYSdata["m5-aps-voltage"] = (float)M5.Axp.GetAPSVoltage();
 #  endif
-#  ifdef ZGatewayRS232
-  modules = modules + ZGatewayRS232;
-#  endif
   SYSdata["modules"] = modules;
   pub(subjectSYStoMQTT, SYSdata);
 }
@@ -1561,9 +1556,6 @@ void receivingMQTT(char* topicOri, char* datacallback) {
 #  endif
 #  ifdef ZactuatorONOFF // outside the jsonpublishing macro due to the fact that we need to use simplepublishing with HA discovery
     MQTTtoONOFF(topicOri, jsondata);
-#  endif
-#  ifdef ZgatewayRS232
-    MQTTtoRS232(topicOri, jsondata);
 #  endif
 #endif
     digitalWrite(LED_SEND, LED_SEND_ON);
