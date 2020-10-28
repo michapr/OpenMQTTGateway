@@ -413,11 +413,13 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
     mac_adress.toUpperCase();
     BLEdata.set("id", (char*)mac_adress.c_str());
     Log.notice(F("Device detected: %s" CR), (char*)mac_adress.c_str());
+    syslog.log(LOG_INFO,"Device detected:" + String((char*)mac_adress.c_str()));
     BLEdevice* device = getDeviceByMac(BLEdata["id"].as<const char*>());
 
     if ((!oneWhite || isWhite(device)) && !isBlack(device)) { //if not black listed mac we go AND if we have no white mac or this mac is  white we go out
       if (advertisedDevice->haveName())
         BLEdata.set("name", (char*)advertisedDevice->getName().c_str());
+        Log.trace(F("Name: %s" CR), (char*)advertisedDevice->getName().c_str());
       if (advertisedDevice->haveManufacturerData()) {
         char* manufacturerdata = BLEUtils::buildHexData(NULL, (uint8_t*)advertisedDevice->getManufacturerData().data(), advertisedDevice->getManufacturerData().length());
         Log.trace(F("Manufacturer Data: %s" CR), manufacturerdata);
@@ -474,6 +476,7 @@ void BLEscan() {
   TIMERG0.wdt_feed = 1;
   TIMERG0.wdt_wprotect = 0;
   Log.notice(F("Scan begin" CR));
+  syslog.log(LOG_INFO, "heap: "+String(ESP.getHeapSize())+"/"+String(ESP.getFreeHeap())+"/"+String(ESP.getMinFreeHeap())+"/"+String(ESP.getMaxAllocHeap()) );
   BLEDevice::init("");
   BLEScan* pBLEScan = BLEDevice::getScan(); //create new scan
   MyAdvertisedDeviceCallbacks myCallbacks;
