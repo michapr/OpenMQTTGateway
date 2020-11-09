@@ -526,7 +526,6 @@ void setup() {
   Serial.begin(SERIAL_BAUD);
   Log.begin(LOG_LEVEL, &Serial);
   Log.notice(F(CR "************* WELCOME TO OpenMQTTGateway **************" CR));
-  tft.print("Here is "+String(DEVICE_HOSTNAME));
   
 #if defined(ESP8266) || defined(ESP32)
 #  ifdef ESP8266
